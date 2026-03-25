@@ -89,7 +89,7 @@ Many-to-many: which employees are assigned to which cages.
 
 ### `fish_estimates`
 
-Quarterly fish estimate with full approval workflow.
+Quarterly fish estimate with full approval workflow. Multiple revisions per (cage, year, quarter) are supported; when a new revision is submitted, all older pending revisions for that same (cage, year, quarter) are automatically marked as superseded.
 
 | Column | Type | Notes |
 |--------|------|-------|
@@ -97,9 +97,10 @@ Quarterly fish estimate with full approval workflow.
 | `cage_id` | UUID FK → cages.id NOT NULL | |
 | `year` | INTEGER NOT NULL | e.g., 2025 |
 | `quarter` | INTEGER NOT NULL (1–4) | Q1=1, Q2=2, Q3=3, Q4=4 |
+| `revision` | INTEGER NOT NULL DEFAULT 1 | Starts at 1; increments each time a new estimate is submitted for the same (cage, year, quarter) |
 | `estimated_count` | INTEGER NOT NULL | Number of fish estimated alive |
 | `notes` | TEXT NULL | Optional notes from submitter |
-| `status` | ENUM: `pending`, `approved`, `rejected` DEFAULT `pending` | |
+| `status` | ENUM: `pending`, `approved`, `rejected`, `superseded` DEFAULT `pending` | `superseded` is set exclusively by the system via Rule B; it cannot be set manually |
 | `submitted_by` | UUID FK → users.id NOT NULL | Employee who submitted |
 | `submitted_at` | TIMESTAMPTZ NOT NULL | |
 | `reviewed_by` | UUID FK → users.id NULL | Officer or Admin who reviewed |
@@ -108,12 +109,14 @@ Quarterly fish estimate with full approval workflow.
 | `created_at` | TIMESTAMPTZ | |
 | `updated_at` | TIMESTAMPTZ | |
 
-**Unique constraint:** `(cage_id, year, quarter)` — only one estimate per cage per quarter
+**Unique constraint:** `(cage_id, year, quarter, revision)` — one row per revision per cage per quarter
+
+**Superseding rule (Rule B):** When a new estimate is submitted for a (cage, year, quarter) that already has one or more `pending` estimates, the server automatically marks all those older `pending` estimates as `superseded` before inserting the new row. Only the newly inserted revision remains in `pending` status. `approved` and `rejected` estimates are never changed.
 
 **Notes:**
-- `status` transitions: `pending` → `approved` or `rejected`
-- Once approved or rejected, the record is never modified (audit integrity)
-- If a new estimate is needed after rejection, a new row is inserted with a new submission
+- `status` transitions: `pending` → `approved`, `rejected`, or `superseded`
+- Once a record reaches `approved`, `rejected`, or `superseded`, it is never modified (audit integrity)
+- The **current fish estimate** for a cage and quarter is the `approved` estimate with the highest `revision` number among all `approved` rows for that (cage, year, quarter)
 
 ---
 
@@ -125,7 +128,7 @@ Immutable audit trail for every status change on a fish estimate.
 |--------|------|-------|
 | `id` | UUID (PK) | |
 | `estimate_id` | UUID FK → fish_estimates.id NOT NULL | |
-| `action` | ENUM: `submitted`, `approved`, `rejected` | |
+| `action` | ENUM: `submitted`, `approved`, `rejected`, `superseded` | |
 | `actor_id` | UUID FK → users.id NOT NULL | User who performed the action |
 | `actor_role` | TEXT NOT NULL | Role at time of action (snapshot) |
 | `comment` | TEXT NULL | |
@@ -334,7 +337,7 @@ All main entities use a `deleted_at` timestamp instead of physical deletion. Thi
 ### 4. Unit Flexibility
 Fish measurements store the unit alongside the session (cm or in). The UI converts for display; the stored value is always the raw input.
 
-### 5. One Estimate Per Quarter Enforcement
-The unique constraint `(cage_id, year, quarter)` prevents duplicate submissions. If a submission is rejected and a new one is needed, the rejected row is kept for the audit trail and a new row is inserted.
+### 5. Revision-Based Resubmission
+Each fish estimate submission for the same (cage, year, quarter) receives an incrementing `revision` number (1, 2, 3…). The unique constraint `(cage_id, year, quarter, revision)` allows multiple rows per quarter while preventing exact duplicates. When a new revision is submitted, all older `pending` revisions for that same (cage, year, quarter) are automatically marked `superseded` (Rule B). This preserves the full submission history for auditing while keeping exactly one active `pending` estimate at any time.
 
-> ⚠️ **Note on uniqueness after rejection:** Because of the unique constraint, only one estimate row can exist per (cage, year, quarter) at a time. If the business needs to allow resubmission after rejection, options are: (a) update the existing row's count + status (simpler, less pure audit trail) or (b) add a `revision` integer to the key — discuss with owner before implementation.
+> The dashboard uses the `approved` estimate with the highest `revision` as the current fish estimate for each (cage, year, quarter).

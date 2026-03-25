@@ -193,9 +193,11 @@ Remove a user from a cage assignment.
 ## Fish Estimates
 
 ### `GET /cages/{id}/fish-estimates` 🔵
-List all fish estimates for a cage (most recent first).
+List all fish estimates for a cage (most recent first, ordered by `submitted_at` descending).
 
 **Query params:** `?year=2025&quarter=2&status=approved`
+
+Supported `status` values: `pending`, `approved`, `rejected`, `superseded`.
 
 **Response `200`:**
 ```json
@@ -205,13 +207,30 @@ List all fish estimates for a cage (most recent first).
     "cage_id": "uuid",
     "year": 2025,
     "quarter": 2,
+    "revision": 2,
     "estimated_count": 12500,
+    "notes": "Recount after officer feedback.",
     "status": "approved",
     "submitted_by": { "id": "uuid", "full_name": "..." },
-    "submitted_at": "2025-07-01T08:00:00Z",
+    "submitted_at": "2025-07-03T09:00:00Z",
     "reviewed_by": { "id": "uuid", "full_name": "..." },
-    "reviewed_at": "2025-07-02T10:00:00Z",
+    "reviewed_at": "2025-07-04T10:00:00Z",
     "review_comment": "Looks accurate."
+  },
+  {
+    "id": "uuid",
+    "cage_id": "uuid",
+    "year": 2025,
+    "quarter": 2,
+    "revision": 1,
+    "estimated_count": 11000,
+    "notes": null,
+    "status": "superseded",
+    "submitted_by": { "id": "uuid", "full_name": "..." },
+    "submitted_at": "2025-07-01T08:00:00Z",
+    "reviewed_by": null,
+    "reviewed_at": null,
+    "review_comment": null
   }
 ]
 ```
@@ -219,7 +238,12 @@ List all fish estimates for a cage (most recent first).
 ---
 
 ### `POST /cages/{id}/fish-estimates` 🟢
-Submit a new quarterly fish estimate.
+Submit a new quarterly fish estimate for the cage. Resubmissions within the same quarter are allowed.
+
+**Server-side behaviour on each submission:**
+1. Determine `revision = MAX(revision) + 1` across **all** existing rows (regardless of status) for the given (cage, year, quarter), defaulting to `1` if no previous estimates exist. Computing across all statuses ensures the revision number never restarts even if prior revisions were approved, rejected, or superseded.
+2. Automatically mark all existing `pending` estimates for the same (cage, year, quarter) as `superseded` (Rule B). A `superseded` audit-log entry is written for each affected estimate.
+3. Insert the new row with `status = pending` and the computed `revision`.
 
 **Request:**
 ```json
@@ -231,19 +255,81 @@ Submit a new quarterly fish estimate.
 }
 ```
 
-**Response `201`:** Created estimate object (status = `pending`).
-**Error `409`:** If an estimate already exists for (cage, year, quarter).
+**Response `201`:** Created estimate object.
+```json
+{
+  "id": "uuid",
+  "cage_id": "uuid",
+  "year": 2025,
+  "quarter": 3,
+  "revision": 1,
+  "estimated_count": 13000,
+  "notes": "Sample count from net test on July 15.",
+  "status": "pending",
+  "submitted_by": { "id": "uuid", "full_name": "Ana" },
+  "submitted_at": "2025-10-01T08:00:00Z",
+  "reviewed_by": null,
+  "reviewed_at": null,
+  "review_comment": null
+}
+```
 
 ---
 
 ### `GET /cages/{id}/fish-estimates/{estimate_id}` 🔵
-Get a single estimate with its full audit trail.
+Get a single estimate with its full audit trail. The `revision` field identifies which submission this is within the (cage, year, quarter) sequence.
 
-**Response `200`:**
+**Example — approved estimate (rev 2):**
 ```json
 {
   "id": "uuid",
-  "...": "...",
+  "cage_id": "uuid",
+  "year": 2025,
+  "quarter": 2,
+  "revision": 2,
+  "estimated_count": 12500,
+  "notes": "Recount after officer feedback.",
+  "status": "approved",
+  "submitted_by": { "id": "uuid", "full_name": "Ana" },
+  "submitted_at": "2025-07-03T09:00:00Z",
+  "reviewed_by": { "id": "uuid", "full_name": "Pedro" },
+  "reviewed_at": "2025-07-04T10:00:00Z",
+  "review_comment": "Verified on-site.",
+  "audit_log": [
+    {
+      "action": "submitted",
+      "actor": { "id": "uuid", "full_name": "Ana" },
+      "actor_role": "employee",
+      "comment": null,
+      "action_at": "2025-07-03T09:00:00Z"
+    },
+    {
+      "action": "approved",
+      "actor": { "id": "uuid", "full_name": "Pedro" },
+      "actor_role": "officer",
+      "comment": "Verified on-site.",
+      "action_at": "2025-07-04T10:00:00Z"
+    }
+  ]
+}
+```
+
+**Example — superseded estimate (rev 1, automatically superseded when rev 2 was submitted):**
+```json
+{
+  "id": "uuid",
+  "cage_id": "uuid",
+  "year": 2025,
+  "quarter": 2,
+  "revision": 1,
+  "estimated_count": 11000,
+  "notes": null,
+  "status": "superseded",
+  "submitted_by": { "id": "uuid", "full_name": "Ana" },
+  "submitted_at": "2025-07-01T08:00:00Z",
+  "reviewed_by": null,
+  "reviewed_at": null,
+  "review_comment": null,
   "audit_log": [
     {
       "action": "submitted",
@@ -253,11 +339,11 @@ Get a single estimate with its full audit trail.
       "action_at": "2025-07-01T08:00:00Z"
     },
     {
-      "action": "approved",
-      "actor": { "id": "uuid", "full_name": "Pedro" },
-      "actor_role": "officer",
-      "comment": "Verified on-site.",
-      "action_at": "2025-07-02T10:00:00Z"
+      "action": "superseded",
+      "actor": { "id": "uuid", "full_name": "Ana" },
+      "actor_role": "employee",
+      "comment": "Automatically superseded by revision 2.",
+      "action_at": "2025-07-03T09:00:00Z"
     }
   ]
 }
@@ -284,7 +370,7 @@ Reject a pending estimate.
 ---
 
 ### `GET /dashboard/fish-estimates/latest` 🔴
-Returns the latest approved estimate per cage and the total. (Admin dashboard widget.)
+Returns the latest **approved** estimate per cage and the total. For each cage, the result is the `approved` row with the highest `revision` number for the highest (year, quarter) combination that has at least one approved estimate. (Admin dashboard widget.)
 
 **Response `200`:**
 ```json
@@ -296,6 +382,7 @@ Returns the latest approved estimate per cage and the total. (Admin dashboard wi
       "cage_name": "Cage 1",
       "year": 2025,
       "quarter": 2,
+      "revision": 2,
       "estimated_count": 13000
     }
   ]
@@ -560,7 +647,7 @@ Returns all data needed for the owner dashboard in a single call (minimizes roun
 {
   "fish_estimates": {
     "total_estimated": 52000,
-    "cages": [{ "cage_id": "...", "cage_name": "...", "estimated_count": 13000, "year": 2025, "quarter": 2 }]
+    "cages": [{ "cage_id": "...", "cage_name": "...", "estimated_count": 13000, "year": 2025, "quarter": 2, "revision": 2 }]
   },
   "water_quality": [
     { "cage_id": "...", "cage_name": "...", "latest_reading_at": "...", "has_alerts": true, "alert_params": ["ph"] }

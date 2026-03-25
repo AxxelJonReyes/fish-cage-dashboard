@@ -31,12 +31,13 @@ This document lists all requirements that must be met before the MVP is consider
 ## Fish Estimate (Quarterly)
 
 - [ ] **REQ-FE-01** Employees can submit a quarterly fish estimate (one number) for their assigned cage.
-- [ ] **REQ-FE-02** Only one estimate per cage per quarter/year combination is allowed at a time (duplicate prevention).
+- [ ] **REQ-FE-02** Employees may resubmit a fish estimate for the same cage, year, and quarter within the same quarter. Each submission is assigned an incrementing revision number (rev 1, rev 2, rev 3…).
+- [ ] **REQ-FE-02a** When a new revision is submitted for a (cage, year, quarter) that already has a `pending` estimate, the server automatically marks the older `pending` estimate(s) as `superseded` (Rule B), so that only the newest revision remains in `pending` status.
 - [ ] **REQ-FE-03** A submitted estimate starts in "Pending" status.
 - [ ] **REQ-FE-04** Officers (for their assigned cages) and Admins can approve or reject a pending estimate.
 - [ ] **REQ-FE-05** When approving or rejecting, the reviewer must optionally add a comment.
-- [ ] **REQ-FE-06** The audit trail records: submitter name, submission time, reviewer name, review time, and final status.
-- [ ] **REQ-FE-07** The owner dashboard shows the latest approved estimate per cage.
+- [ ] **REQ-FE-06** The audit trail records: submitter name, submission time, reviewer name, review time, final status, and revision number.
+- [ ] **REQ-FE-07** The owner dashboard shows the latest **approved** estimate per cage, determined by the highest revision number among all approved estimates for each (cage, year, quarter).
 - [ ] **REQ-FE-08** The owner dashboard shows the sum of all latest approved estimates.
 - [ ] **REQ-FE-09** A quarterly history chart (bar or line) shows approved estimates per cage over time.
 - [ ] **REQ-FE-10** Employees cannot approve or reject estimates (including their own).
