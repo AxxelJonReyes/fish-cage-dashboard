@@ -41,17 +41,26 @@ export default async function AdminPage() {
           </p>
         </Link>
 
+        <Link
+          href="/admin/cages"
+          className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm transition-shadow hover:shadow-md"
+        >
+          <h2 className="font-semibold text-gray-800">Cage Management</h2>
+          <p className="mt-1 text-sm text-gray-500">
+            Add, edit, or archive cages. Assign officers.
+          </p>
+        </Link>
+
         {[
-          { label: "Cage Management", description: "Add, edit, or archive cages." },
-          { label: "Water Quality Thresholds", description: "Configure alert thresholds." },
-          { label: "Audit Trail", description: "View fish estimate submissions and approvals." },
+          { label: "Water Quality Thresholds", description: "Configure alert thresholds per cage. Coming soon." },
+          { label: "Audit Trail", description: "View fish estimate submissions and approvals. Coming soon." },
         ].map(({ label, description }) => (
           <div
             key={label}
-            className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm"
+            className="rounded-xl border border-dashed border-gray-200 bg-gray-50 p-5 opacity-60"
           >
-            <h2 className="font-semibold text-gray-800">{label}</h2>
-            <p className="mt-1 text-sm text-gray-500">{description}</p>
+            <h2 className="font-semibold text-gray-600">{label}</h2>
+            <p className="mt-1 text-sm text-gray-400">{description}</p>
           </div>
         ))}
       </div>
