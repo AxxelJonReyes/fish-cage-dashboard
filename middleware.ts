@@ -9,8 +9,18 @@ const PROTECTED_PATHS = [
   "/admin",
 ];
 
+const ADMIN_PATHS = ["/admin"];
+
+const ADMIN_ROLES = ["admin", "owner"];
+
 function isProtected(pathname: string) {
   return PROTECTED_PATHS.some(
+    (p) => pathname === p || pathname.startsWith(p + "/"),
+  );
+}
+
+function isAdminPath(pathname: string) {
+  return ADMIN_PATHS.some(
     (p) => pathname === p || pathname.startsWith(p + "/"),
   );
 }
@@ -38,6 +48,19 @@ export async function middleware(request: NextRequest) {
     const loginUrl = new URL("/login", request.url);
     loginUrl.searchParams.set("redirectedFrom", pathname);
     return NextResponse.redirect(loginUrl);
+  }
+
+  // Authenticated user visiting an admin path → check role
+  if (session && isAdminPath(pathname)) {
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", session.user.id)
+      .single();
+
+    if (!profile || !ADMIN_ROLES.includes(profile.role)) {
+      return NextResponse.redirect(new URL("/dashboard", request.url));
+    }
   }
 
   return response;
