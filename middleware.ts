@@ -1,0 +1,57 @@
+import { NextRequest, NextResponse } from "next/server";
+import { createMiddlewareClient } from "@/lib/supabase/middleware";
+
+const PROTECTED_PATHS = [
+  "/dashboard",
+  "/cages",
+  "/tasks",
+  "/incidents",
+  "/admin",
+];
+
+function isProtected(pathname: string) {
+  return PROTECTED_PATHS.some(
+    (p) => pathname === p || pathname.startsWith(p + "/"),
+  );
+}
+
+export async function middleware(request: NextRequest) {
+  const { pathname } = request.nextUrl;
+
+  // Create a response to forward cookies from the Supabase client.
+  let response = NextResponse.next({ request });
+
+  const supabase = createMiddlewareClient(request, response);
+
+  // Refresh the session (rotates tokens if needed) — always do this first.
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+
+  // Logged-in user visiting /login → redirect to /dashboard
+  if (session && pathname === "/login") {
+    return NextResponse.redirect(new URL("/dashboard", request.url));
+  }
+
+  // Unauthenticated user visiting a protected path → redirect to /login
+  if (!session && isProtected(pathname)) {
+    const loginUrl = new URL("/login", request.url);
+    loginUrl.searchParams.set("redirectedFrom", pathname);
+    return NextResponse.redirect(loginUrl);
+  }
+
+  return response;
+}
+
+export const config = {
+  matcher: [
+    /*
+     * Match all request paths EXCEPT:
+     *  - _next/static (static files)
+     *  - _next/image (image optimisation)
+     *  - favicon.ico
+     *  - public assets (*.png, *.svg, etc.)
+     */
+    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+  ],
+};
