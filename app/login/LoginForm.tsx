@@ -6,7 +6,7 @@ import { createClient } from "@/lib/supabase/client";
 
 export default function LoginForm() {
   const router = useRouter();
-  const [email, setEmail] = useState("");
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -17,13 +17,28 @@ export default function LoginForm() {
     setLoading(true);
 
     const supabase = createClient();
+
+    // 1) Resolve username -> email (server-side function in Supabase)
+    const { data: email, error: rpcError } = await supabase.rpc(
+      "get_email_for_username",
+      { p_username: username },
+    );
+
+    // Avoid revealing whether the username exists
+    if (rpcError || !email) {
+      setError("Invalid username or password");
+      setLoading(false);
+      return;
+    }
+
+    // 2) Sign in using Supabase Auth (still uses email internally)
     const { error: signInError } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
 
     if (signInError) {
-      setError(signInError.message);
+      setError("Invalid username or password");
       setLoading(false);
       return;
     }
@@ -36,20 +51,20 @@ export default function LoginForm() {
     <form onSubmit={handleSubmit} className="flex flex-col gap-4">
       <div>
         <label
-          htmlFor="email"
+          htmlFor="username"
           className="mb-1 block text-sm font-medium text-gray-700"
         >
-          Email
+          Username
         </label>
         <input
-          id="email"
-          type="email"
+          id="username"
+          type="text"
           required
-          autoComplete="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
+          autoComplete="username"
+          value={username}
+          onChange={(e) => setUsername(e.target.value)}
           className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-          placeholder="you@example.com"
+          placeholder="Axxel"
         />
       </div>
 
