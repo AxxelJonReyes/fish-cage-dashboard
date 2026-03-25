@@ -76,14 +76,57 @@ The Fish Cage Dashboard centralizes all operations for a tilapia fish cage busin
 
 ---
 
-## Tech Stack Recommendation
+## Tech Stack
 
-See [docs/plan.md](docs/plan.md#tech-stack-options) for two recommended options with tradeoffs.
+| Layer | Technology |
+|-------|-----------|
+| Framework | [Next.js 15](https://nextjs.org) (App Router) |
+| Language | TypeScript |
+| Styling | [Tailwind CSS](https://tailwindcss.com) |
+| Database / Auth | [Supabase](https://supabase.com) (PostgreSQL + Auth + RLS) |
+| Linting | ESLint (`eslint-config-next`) |
+| Formatting | Prettier + `prettier-plugin-tailwindcss` |
+
+See [docs/plan.md](docs/plan.md#tech-stack-options) for full tech stack rationale.
 
 ---
 
 ## Getting Started
 
-> ⚠️ Full application not yet built. This repository currently contains planning and documentation only.
+### Prerequisites
+
+- Node.js 18+
+- A [Supabase](https://supabase.com) project (free tier works)
+
+### Local Development
+
+```bash
+# 1. Install dependencies
+npm install
+
+# 2. Set up environment variables
+cp .env.example .env.local
+# Open .env.local and fill in your Supabase project URL and keys:
+#   NEXT_PUBLIC_SUPABASE_URL=https://<your-project>.supabase.co
+#   NEXT_PUBLIC_SUPABASE_ANON_KEY=<your-anon-key>
+#   SUPABASE_SERVICE_ROLE_KEY=<your-service-role-key>   # server-only, never expose in client code
+
+# 3. Start the development server
+npm run dev
+```
+
+Open [http://localhost:3000](http://localhost:3000) in your browser.
+
+### Available Scripts
+
+| Command | Description |
+|---------|-------------|
+| `npm run dev` | Start the Next.js development server |
+| `npm run build` | Build for production |
+| `npm run start` | Start production server |
+| `npm run lint` | Run ESLint |
+| `npm run format` | Format code with Prettier |
+
+---
 
 Contributions and feedback welcome — please open an issue using the provided templates in [`.github/ISSUE_TEMPLATE/`](.github/ISSUE_TEMPLATE/).
