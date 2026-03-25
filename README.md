@@ -130,3 +130,59 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 ---
 
 Contributions and feedback welcome — please open an issue using the provided templates in [`.github/ISSUE_TEMPLATE/`](.github/ISSUE_TEMPLATE/).
+
+---
+
+## Authentication Setup
+
+The app uses **Supabase Auth** (email + password). There is no public sign-up page — administrators create users from the Supabase Dashboard.
+
+### Creating Users
+
+1. Go to your Supabase project → **Authentication → Users → Add user**.
+2. Enter the user's email and a temporary password.
+3. The user can log in immediately at `/login`.
+
+### Profiles Table & Trigger
+
+Each user must have a row in `public.profiles` with at least a `role` column (`admin`, `owner`, or `employee`). Add a trigger in Supabase so a profile row is created automatically on signup:
+
+```sql
+-- 1. Create the profiles table (if not already done)
+create table if not exists public.profiles (
+  id   uuid primary key references auth.users(id) on delete cascade,
+  role text not null default 'employee'
+);
+
+-- 2. Enable RLS and allow users to read their own profile
+alter table public.profiles enable row level security;
+
+create policy "Users can read their own profile"
+  on public.profiles for select
+  using (auth.uid() = id);
+
+-- 3. Auto-create a profile row when a new user signs up
+create or replace function public.handle_new_user()
+returns trigger language plpgsql security definer as $$
+begin
+  insert into public.profiles (id)
+  values (new.id)
+  on conflict (id) do nothing;
+  return new;
+end;
+$$;
+
+create or replace trigger on_auth_user_created
+  after insert on auth.users
+  for each row execute procedure public.handle_new_user();
+```
+
+### Roles
+
+| Role | Admin nav link visible |
+|------|------------------------|
+| `admin` | ✅ Yes |
+| `owner` | ✅ Yes |
+| `employee` | ❌ No |
+
+To promote a user to admin/owner, update their `profiles.role` directly in Supabase → **Table Editor → profiles**.
