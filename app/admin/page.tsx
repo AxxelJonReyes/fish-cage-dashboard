@@ -1,10 +1,30 @@
-// TODO: Admin-only page. Restrict access via middleware (role: admin).
-// TODO: Features:
-//   - Manage users (create, assign roles, deactivate)
-//   - Configure water quality thresholds
-//   - View audit trail (fish estimate submissions and approvals)
-//   - Manage cages (add, edit, archive)
-export default function AdminPage() {
+import { redirect } from "next/navigation";
+import { createClient } from "@/lib/supabase/server";
+
+const ADMIN_ROLES = ["admin", "owner"];
+
+// Defense-in-depth: verify role server-side even if middleware is bypassed.
+export default async function AdminPage() {
+  const supabase = await createClient();
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    redirect("/login?redirectedFrom=/admin");
+  }
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("role")
+    .eq("id", user.id)
+    .single();
+
+  if (!profile || !ADMIN_ROLES.includes(profile.role)) {
+    redirect("/dashboard");
+  }
+
   return (
     <div>
       <h1 className="mb-6 text-2xl font-bold text-blue-700">Admin</h1>
