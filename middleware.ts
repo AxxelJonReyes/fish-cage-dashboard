@@ -11,6 +11,9 @@ const PROTECTED_PATHS = [
 
 const ADMIN_PATHS = ["/admin"];
 
+// Admin paths that officers are also permitted to access.
+const OFFICER_ACCESSIBLE_PATHS = ["/admin/cages/"];
+
 const ADMIN_ROLES = ["admin", "owner"];
 
 function isProtected(pathname: string) {
@@ -23,6 +26,10 @@ function isAdminPath(pathname: string) {
   return ADMIN_PATHS.some(
     (p) => pathname === p || pathname.startsWith(p + "/"),
   );
+}
+
+function isOfficerAccessiblePath(pathname: string) {
+  return OFFICER_ACCESSIBLE_PATHS.some((p) => pathname.startsWith(p));
 }
 
 export async function middleware(request: NextRequest) {
@@ -58,7 +65,14 @@ export async function middleware(request: NextRequest) {
       .eq("id", session.user.id)
       .single();
 
-    if (!profile || !ADMIN_ROLES.includes(profile.role)) {
+    const role = profile?.role as string | undefined;
+
+    // Officers may access specific admin sub-paths (e.g. cage detail pages).
+    if (role === "officer" && isOfficerAccessiblePath(pathname)) {
+      return response;
+    }
+
+    if (!profile || !ADMIN_ROLES.includes(role ?? "")) {
       return NextResponse.redirect(new URL("/dashboard", request.url));
     }
   }

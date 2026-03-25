@@ -12,7 +12,7 @@ interface CreatedUser {
 export default function CreateUserForm() {
   const [username, setUsername] = useState("");
   const [fullName, setFullName] = useState("");
-  const [role, setRole] = useState<"employee" | "admin">("employee");
+  const [role, setRole] = useState<"employee" | "admin" | "officer">("employee");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -125,10 +125,11 @@ export default function CreateUserForm() {
         <select
           id="role"
           value={role}
-          onChange={(e) => setRole(e.target.value as "employee" | "admin")}
+          onChange={(e) => setRole(e.target.value as "employee" | "admin" | "officer")}
           className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
         >
           <option value="employee">Employee</option>
+          <option value="officer">Officer</option>
           <option value="admin">Admin</option>
         </select>
       </div>

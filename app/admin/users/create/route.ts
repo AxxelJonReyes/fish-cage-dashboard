@@ -4,7 +4,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 
 const CALLER_ROLES = ["admin", "owner"] as const;
 // Admins may create employee or admin — never owner.
-const CREATABLE_ROLES = ["employee", "admin"] as const;
+const CREATABLE_ROLES = ["employee", "admin", "officer"] as const;
 
 type CreatableRole = (typeof CREATABLE_ROLES)[number];
 
@@ -60,7 +60,7 @@ export async function POST(req: NextRequest) {
   }
   if (!CREATABLE_ROLES.includes(roleRaw as CreatableRole)) {
     return NextResponse.json(
-      { error: "role must be employee or admin" },
+      { error: "role must be employee, officer, or admin" },
       { status: 400 },
     );
   }
