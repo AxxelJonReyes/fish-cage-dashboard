@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 
 const ADMIN_ROLES = ["admin", "owner"];
@@ -30,8 +31,17 @@ export default async function AdminPage() {
       <h1 className="mb-6 text-2xl font-bold text-blue-700">Admin</h1>
 
       <div className="grid gap-4 sm:grid-cols-2">
+        <Link
+          href="/admin/users"
+          className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm transition-shadow hover:shadow-md"
+        >
+          <h2 className="font-semibold text-gray-800">User Management</h2>
+          <p className="mt-1 text-sm text-gray-500">
+            Create and manage users, assign roles.
+          </p>
+        </Link>
+
         {[
-          { label: "User Management", description: "Create and manage users, assign roles." },
           { label: "Cage Management", description: "Add, edit, or archive cages." },
           { label: "Water Quality Thresholds", description: "Configure alert thresholds." },
           { label: "Audit Trail", description: "View fish estimate submissions and approvals." },
