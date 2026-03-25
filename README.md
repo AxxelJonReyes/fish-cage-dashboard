@@ -135,13 +135,34 @@ Contributions and feedback welcome — please open an issue using the provided t
 
 ## Authentication Setup
 
-The app uses **Supabase Auth** (email + password). There is no public sign-up page — administrators create users from the Supabase Dashboard.
+The app uses **Supabase Auth** (email + password). There is no public sign-up page — administrators create users from the admin dashboard inside the app.
 
-### Creating Users
+### Creating Users (Admin UI — recommended)
+
+1. Log in as an `admin` or `owner` user.
+2. Navigate to **Admin → User Management** (`/admin/users`).
+3. Fill in the username, optional full name, role (`employee` or `admin`), and password.
+4. Click **Create User**.
+
+The app generates a placeholder email automatically: `<username>@fishcage.local`. The new user can log in at `/login` with their **username** and **password**.
+
+> **Note:** Password reset via email won't work because placeholder addresses are not real inboxes. To change a user's password, update it manually in **Supabase Dashboard → Authentication → Users**.
+
+#### Required environment variable
+
+The admin user-creation route uses the Supabase service-role key (server-only):
+
+```
+SUPABASE_SERVICE_ROLE_KEY=your_service_role_key_here
+```
+
+This key must be present in `.env.local`. It is **never** exposed to the browser.
+
+### Creating Users (Supabase Dashboard — manual fallback)
 
 1. Go to your Supabase project → **Authentication → Users → Add user**.
-2. Enter the user's email and a temporary password.
-3. The user can log in immediately at `/login`.
+2. Enter a placeholder email (`<username>@fishcage.local`) and a password.
+3. Then insert/update the matching row in **Table Editor → profiles** with `username`, `role`, and optionally `full_name`.
 
 ### Profiles Table & Trigger
 
