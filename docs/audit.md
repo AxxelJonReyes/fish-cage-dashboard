@@ -120,6 +120,11 @@ Trigger: `audit_tasks` (AFTER UPDATE)
 Source table: `public.reports`
 Trigger: `audit_reports` (AFTER UPDATE)
 
+Note: `reports.created_by_role` is set automatically on INSERT by the
+`set_reports_created_by_role` trigger (BEFORE INSERT, SECURITY DEFINER).
+Clients cannot spoof this value — the DB always overwrites it with the actual
+session role.
+
 | `field_name` | When logged |
 |-------------|-------------|
 | `title` | Title changed |

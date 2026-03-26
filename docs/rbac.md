@@ -41,12 +41,21 @@ other RLS policies without causing infinite recursion.
 
 ## Permissions Matrix
 
-### Profiles (`public.profiles`)
+### Profiles (`public.profiles` and `public.profiles_public`)
+
+`public.profiles` is locked down to admin/owner and own-row reads. Finance
+columns (`salary`, `advances`, `admin_notes`) are never visible to
+officers or employees via this table.
+
+For UI joins that only need display names (harvest history, assignment lists,
+etc.), officers and employees must query the **`public.profiles_public` view**
+instead. This view exposes only `id`, `username`, `full_name`, and `role`.
 
 | Action | admin/owner | officer | employee |
 |--------|:-----------:|:-------:|:--------:|
-| Read all profiles | ✅ | ❌ | ❌ |
-| Read own profile | ✅ | ✅ | ✅ |
+| Read all profiles (full row, incl. finance fields) | ✅ | ❌ | ❌ |
+| Read own profile (full row) | ✅ | ✅ | ✅ |
+| Read any user's display name via `profiles_public` | ✅ | ✅ | ✅ |
 | Update any profile (all fields) | ✅ | ❌ | ❌ |
 | Update own profile (non-finance) | ✅ | app-layer | app-layer |
 | View `salary` / `advances` / `admin_notes` | ✅ | ❌ | ❌ |
@@ -54,6 +63,12 @@ other RLS policies without causing infinite recursion.
 > **Note for Navbar:** Every user can read their own profile row to get their
 > `role` and `full_name` for display. This is enforced by the
 > `profiles_own_select` policy.
+>
+> **Note for display-name joins:** When building queries that need another
+> user's name (e.g. "harvested by", "assigned employee"), use
+> `profiles_public` — not `profiles` — so that non-admin callers can resolve
+> names without triggering a permission error or accidentally reading finance
+> fields.
 
 ---
 
@@ -130,6 +145,10 @@ other RLS policies without causing infinite recursion.
 
 > **Universal reports:** Setting `cage_id = NULL` is explicitly allowed for
 > all submitters. The INSERT policy only requires `created_by = auth.uid()`.
+>
+> **`created_by_role`:** This column is always set by the DB trigger
+> `set_reports_created_by_role` (BEFORE INSERT). Any value supplied by the
+> client in the INSERT payload is overwritten. This prevents role spoofing.
 
 ---
 

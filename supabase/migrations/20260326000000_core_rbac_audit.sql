@@ -19,37 +19,18 @@
 
 
 -- =============================================================================
--- 0. Ensure required enum values exist
+-- 0. Enum prerequisite — run BEFORE this file (in a separate SQL Editor query)
 -- =============================================================================
-
--- Add 'officer' to user_role if not already present.
--- NOTE: ALTER TYPE … ADD VALUE cannot run inside a transaction block.
--- If your migration runner wraps statements in transactions, run this
--- statement separately in the SQL Editor first.
-DO $$
-BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_enum
-    WHERE enumlabel = 'officer'
-      AND enumtypid = (SELECT oid FROM pg_type WHERE typname = 'user_role')
-  ) THEN
-    ALTER TYPE public.user_role ADD VALUE 'officer';
-  END IF;
-END;
-$$;
-
--- Add 'owner' to user_role if not already present.
-DO $$
-BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_enum
-    WHERE enumlabel = 'owner'
-      AND enumtypid = (SELECT oid FROM pg_type WHERE typname = 'user_role')
-  ) THEN
-    ALTER TYPE public.user_role ADD VALUE 'owner';
-  END IF;
-END;
-$$;
+--
+-- ALTER TYPE … ADD VALUE cannot run inside a transaction block, so it cannot
+-- be included in this migration file directly. You must run the two statements
+-- below manually in the Supabase SQL Editor BEFORE applying this migration:
+--
+--   ALTER TYPE public.user_role ADD VALUE IF NOT EXISTS 'officer';
+--   ALTER TYPE public.user_role ADD VALUE IF NOT EXISTS 'owner';
+--
+-- See supabase/README.md § "Pre-step: ensure enum values exist" for details.
+-- =============================================================================
 
 
 -- =============================================================================
@@ -202,13 +183,36 @@ CREATE POLICY "profiles_admin_update"
   USING (public.is_admin())
   WITH CHECK (public.is_admin());
 
--- Officers/employees can read other profiles only for username/full_name lookups
--- needed in the assignment UI; finance fields are never returned in those queries.
--- The application layer must SELECT only non-sensitive columns when non-admin.
+-- Officers/employees must use the profiles_public view (see section 3b below)
+-- to resolve display names. Direct SELECT on profiles is restricted to admins
+-- and own-row only; this prevents accidental exposure of finance fields.
 
 
 -- =============================================================================
--- 4. cage_employees — many-to-many employee ↔ cage assignment
+-- 3b. profiles_public — safe view for non-sensitive display-name lookups
+--
+-- Officers and employees need to resolve usernames/full names for UI joins
+-- (harvest history, assignment lists, etc.) without seeing finance columns.
+-- This view exposes only the non-sensitive columns and is the ONLY way
+-- non-admin users should look up other users' names.
+--
+-- NOTE: We do NOT add a broad SELECT policy on public.profiles for
+-- authenticated users. The view approach keeps finance fields locked down.
+-- =============================================================================
+
+CREATE OR REPLACE VIEW public.profiles_public AS
+SELECT id, username, full_name, role
+FROM public.profiles;
+
+-- security_barrier prevents the view from leaking rows that the underlying
+-- table's RLS would hide (defence against row-leakage via LIMIT/ORDER tricks).
+ALTER VIEW public.profiles_public SET (security_barrier = true);
+
+-- Allow all authenticated users to SELECT from this view.
+GRANT SELECT ON public.profiles_public TO authenticated;
+
+
+
 -- =============================================================================
 
 CREATE TABLE IF NOT EXISTS public.cage_employees (
@@ -434,7 +438,7 @@ CREATE TABLE IF NOT EXISTS public.reports (
                               CHECK (priority IN ('low', 'medium', 'high', 'urgent')),
   cage_id         uuid        NULL REFERENCES public.cages(id) ON DELETE SET NULL,
   created_by      uuid        NOT NULL REFERENCES public.profiles(id),
-  created_by_role text        NULL,  -- snapshot of role at submission time
+  created_by_role text        NULL,  -- always set by DB trigger (trg_set_reports_created_by_role); never rely on client input
   created_at      timestamptz NOT NULL DEFAULT now(),
   updated_at      timestamptz NOT NULL DEFAULT now()
 );
@@ -446,6 +450,26 @@ DROP TRIGGER IF EXISTS reports_updated_at ON public.reports;
 CREATE TRIGGER reports_updated_at
   BEFORE UPDATE ON public.reports
   FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
+
+-- Enforce created_by_role via trigger so clients cannot spoof their role.
+-- This runs BEFORE INSERT so the value is always set from the DB session,
+-- regardless of what the application sends in the INSERT payload.
+CREATE OR REPLACE FUNCTION public.trg_set_reports_created_by_role()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  NEW.created_by_role := public.current_user_role()::text;
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS set_reports_created_by_role ON public.reports;
+CREATE TRIGGER set_reports_created_by_role
+  BEFORE INSERT ON public.reports
+  FOR EACH ROW EXECUTE FUNCTION public.trg_set_reports_created_by_role();
 
 ALTER TABLE public.reports ENABLE ROW LEVEL SECURITY;
 
@@ -483,7 +507,7 @@ CREATE POLICY "reports_own_select"
 --   • Bucket name (recommended): "report-attachments"
 --   • Bucket type: private (Supabase Storage managed — not configured via SQL)
 --   • storage_path stores the object key within that bucket, e.g.:
---       "{report_id}/{filename}"
+--       "{user_id}/{report_id}/{filename}"
 --   • Use Supabase Storage signed URLs (createSignedUrl) to serve files.
 --   • Configure bucket RLS in Supabase Dashboard → Storage → Policies:
 --       - INSERT: auth.uid() = (SELECT created_by FROM reports WHERE id = report_id)

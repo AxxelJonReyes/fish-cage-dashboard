@@ -16,6 +16,28 @@ supabase/
 
 ---
 
+## Pre-step: ensure enum values exist
+
+> **Do this before running the migration file.**
+
+`ALTER TYPE … ADD VALUE` cannot run inside a PostgreSQL transaction block, so
+these statements cannot be included in the migration file itself. Run them in a
+**separate** SQL Editor query first:
+
+```sql
+ALTER TYPE public.user_role ADD VALUE IF NOT EXISTS 'officer';
+ALTER TYPE public.user_role ADD VALUE IF NOT EXISTS 'owner';
+```
+
+1. Open **[Supabase Dashboard](https://supabase.com/dashboard)** → **SQL Editor**.
+2. Click **New query**.
+3. Paste the two lines above and click **Run**.
+4. You should see `Success. No rows returned`. If either value already exists,
+   `IF NOT EXISTS` makes the statement a no-op — no error.
+5. Proceed to the migration steps below.
+
+---
+
 ## How to apply migrations in Supabase
 
 > **Important:** Supabase does not automatically run `.sql` files from your
@@ -79,17 +101,18 @@ If you are starting fresh (empty database), run the prerequisite SQL from
 All four functions use `SECURITY DEFINER` so they can query `profiles` without
 triggering the profiles RLS policies (which would cause infinite recursion).
 
-### New tables
+### New tables and views
 
-| Table | Purpose |
-|-------|---------|
-| `public.audit_log` | Immutable field-level change history |
-| `public.cage_employees` | Many-to-many employee ↔ cage assignments |
-| `public.cage_employee_notes` | Per-employee, per-cage notes |
-| `public.tasks` | Admin-created tasks with priority and status |
-| `public.reports` | Officer/employee incident & report submissions |
-| `public.report_attachments` | File attachment metadata for reports |
-| `public.business_ledger` | Admin-only financial records |
+| Object | Type | Purpose |
+|--------|------|---------|
+| `public.audit_log` | table | Immutable field-level change history |
+| `public.cage_employees` | table | Many-to-many employee ↔ cage assignments |
+| `public.cage_employee_notes` | table | Per-employee, per-cage notes |
+| `public.tasks` | table | Admin-created tasks with priority and status |
+| `public.reports` | table | Officer/employee incident & report submissions |
+| `public.report_attachments` | table | File attachment metadata for reports |
+| `public.business_ledger` | table | Admin-only financial records |
+| `public.profiles_public` | view | Non-sensitive display-name lookup for non-admin users |
 
 ### Profiles extensions
 
@@ -116,6 +139,7 @@ trigger functions can.
 | `audit_cage_employee_notes` | `cage_employee_notes` | `note` insert/update/delete |
 | `audit_tasks` | `tasks` | `title`, `description`, `status`, `priority`, `due_date`, `assigned_to` |
 | `audit_reports` | `reports` | `title`, `description`, `priority`, `cage_id` |
+| `set_reports_created_by_role` | `reports` | sets `created_by_role` from DB session (BEFORE INSERT; client value ignored) |
 
 ---
 
@@ -174,6 +198,20 @@ ORDER BY tablename;
 
 -- 6. Smoke-test a helper function (run as a non-admin test user or use service role)
 SELECT public.is_admin(); -- returns true/false depending on calling user
+
+-- 7. Check profiles_public view exists
+SELECT table_name, table_type
+FROM information_schema.tables
+WHERE table_schema = 'public'
+  AND table_name = 'profiles_public';
+-- Expected: 1 row with table_type = VIEW
+
+-- 8. Check set_reports_created_by_role trigger exists
+SELECT trigger_name, event_object_table, action_timing, event_manipulation
+FROM information_schema.triggers
+WHERE trigger_schema = 'public'
+  AND trigger_name = 'set_reports_created_by_role';
+-- Expected: 1 row (BEFORE INSERT on reports)
 ```
 
 ---
@@ -182,16 +220,12 @@ SELECT public.is_admin(); -- returns true/false depending on calling user
 
 ### `ERROR: cannot alter type "user_role" inside a transaction`
 
-The `ALTER TYPE … ADD VALUE` statements (for `'officer'` and `'owner'`) cannot
-run inside a transaction block. If you see this error:
+This error means you included the enum ALTER statements inside this migration
+file, or your migration runner wrapped them in a transaction.
 
-1. Click **New query** in the SQL Editor.
-2. Run only these two lines first (each separately if needed):
-   ```sql
-   ALTER TYPE public.user_role ADD VALUE IF NOT EXISTS 'officer';
-   ALTER TYPE public.user_role ADD VALUE IF NOT EXISTS 'owner';
-   ```
-3. Then run the full migration file.
+**Resolution:** follow the **Pre-step** section at the top of this guide —
+run the two `ALTER TYPE` statements in a *separate* SQL Editor query first,
+then run the migration file. The migration no longer contains those statements.
 
 ### `ERROR: policy "xyz" already exists`
 
