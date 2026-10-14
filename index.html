@@ -1,0 +1,847 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Casa Creare — Tuned to the Unseen</title>
+    <style>
+      :root {
+        --bg: #050508;
+        --gold: #d4af37;
+        --crimson: #e63946;
+        --cyan: #00f2fe;
+        --accent: rgba(212, 175, 55, 0.9);
+        --panel: rgba(255, 255, 255, 0.08);
+        --text: #e8e8ef;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        margin: 0;
+        min-height: 100%;
+        background: radial-gradient(circle at 20% 20%, rgba(0, 242, 254, 0.08), transparent 40%),
+          radial-gradient(circle at 80% 10%, rgba(212, 175, 55, 0.12), transparent 35%), var(--bg);
+        color: var(--text);
+        font-family: Inter, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+        overflow-x: hidden;
+      }
+
+      body::before {
+        content: '';
+        position: fixed;
+        inset: 0;
+        background: radial-gradient(circle at 50% 120%, rgba(0, 0, 0, 0.9), transparent 65%);
+        pointer-events: none;
+        z-index: 0;
+      }
+
+      .app {
+        position: relative;
+        z-index: 1;
+        max-width: 1100px;
+        margin: 0 auto;
+        padding: 20px;
+        display: grid;
+        gap: 18px;
+      }
+
+      .glass {
+        background: linear-gradient(135deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.03));
+        backdrop-filter: blur(12px);
+        border: 1px solid rgba(255, 255, 255, 0.14);
+        border-radius: 18px;
+        box-shadow: 0 20px 45px rgba(0, 0, 0, 0.35);
+      }
+
+      .header {
+        padding: 22px;
+        text-align: center;
+      }
+
+      h1 {
+        margin: 0;
+        font-size: clamp(1.8rem, 5vw, 2.8rem);
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+      }
+
+      .subtitle {
+        margin: 8px 0 4px;
+        color: rgba(232, 232, 239, 0.85);
+      }
+
+      .tagline {
+        margin: 0;
+        color: var(--accent);
+        font-style: italic;
+      }
+
+      .controls {
+        display: grid;
+        grid-template-columns: minmax(250px, 1fr) 2fr;
+        gap: 16px;
+      }
+
+      .dial-card,
+      .hud-card,
+      .scope-card {
+        padding: 18px;
+      }
+
+      .dial-wrap {
+        display: grid;
+        place-items: center;
+        gap: 12px;
+      }
+
+      .dial {
+        width: 220px;
+        height: 220px;
+        border-radius: 50%;
+        position: relative;
+        background: radial-gradient(circle at 35% 35%, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0.03) 60%, rgba(0, 0, 0, 0.5));
+        border: 1px solid rgba(255, 255, 255, 0.25);
+        box-shadow: inset 0 0 25px rgba(0, 0, 0, 0.55), 0 0 40px rgba(0, 0, 0, 0.5);
+        will-change: transform;
+        transform: translate3d(0, 0, 0);
+        touch-action: none;
+      }
+
+      .dial::before {
+        content: '';
+        position: absolute;
+        inset: 12px;
+        border-radius: 50%;
+        border: 1px dashed rgba(255, 255, 255, 0.22);
+      }
+
+      .needle {
+        position: absolute;
+        top: 14px;
+        left: 50%;
+        width: 5px;
+        height: 92px;
+        border-radius: 8px;
+        transform-origin: 50% 96%;
+        background: linear-gradient(to bottom, #fff, var(--accent));
+        box-shadow: 0 0 16px var(--accent);
+        margin-left: -2.5px;
+        will-change: transform;
+      }
+
+      .dial-center {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: 36px;
+        height: 36px;
+        margin: -18px;
+        border-radius: 50%;
+        background: #18181f;
+        border: 2px solid rgba(255, 255, 255, 0.3);
+      }
+
+      input[type='range'] {
+        width: 100%;
+        appearance: none;
+        height: 8px;
+        border-radius: 999px;
+        background: linear-gradient(90deg, rgba(0, 242, 254, 0.4), rgba(212, 175, 55, 0.45), rgba(230, 57, 70, 0.4));
+        outline: none;
+      }
+
+      input[type='range']::-webkit-slider-thumb {
+        appearance: none;
+        width: 22px;
+        height: 22px;
+        border-radius: 50%;
+        border: 1px solid rgba(255, 255, 255, 0.75);
+        background: #0f0f16;
+        box-shadow: 0 0 10px var(--accent);
+      }
+
+      input[type='range']::-moz-range-thumb {
+        width: 22px;
+        height: 22px;
+        border-radius: 50%;
+        border: 1px solid rgba(255, 255, 255, 0.75);
+        background: #0f0f16;
+        box-shadow: 0 0 10px var(--accent);
+      }
+
+      .audio-button {
+        width: 100%;
+        margin-top: 10px;
+        padding: 10px 12px;
+        border-radius: 10px;
+        border: 1px solid rgba(255, 255, 255, 0.35);
+        background: rgba(0, 0, 0, 0.35);
+        color: #fff;
+        font-weight: 600;
+        cursor: pointer;
+      }
+
+      .hud-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 10px;
+      }
+
+      .metric {
+        background: rgba(255, 255, 255, 0.06);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 12px;
+        padding: 12px;
+      }
+
+      .metric small {
+        display: block;
+        color: rgba(255, 255, 255, 0.7);
+      }
+
+      .metric strong {
+        display: block;
+        margin-top: 6px;
+        font-size: 1.2rem;
+      }
+
+      .nodes {
+        display: flex;
+        gap: 8px;
+        margin-top: 12px;
+      }
+
+      .node {
+        flex: 1;
+        height: 10px;
+        border-radius: 99px;
+        background: rgba(255, 255, 255, 0.15);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+      }
+
+      .node.active {
+        background: linear-gradient(90deg, rgba(0, 242, 254, 0.95), rgba(212, 175, 55, 0.95));
+        box-shadow: 0 0 15px rgba(0, 242, 254, 0.45);
+      }
+
+      .cards {
+        margin-top: 12px;
+        display: grid;
+        gap: 8px;
+      }
+
+      .card {
+        border-radius: 12px;
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        background: rgba(255, 255, 255, 0.05);
+        padding: 10px 12px;
+        font-size: 0.93rem;
+      }
+
+      .card.locked {
+        opacity: 0.52;
+      }
+
+      .scope-card canvas {
+        width: 100%;
+        height: 360px;
+        border-radius: 12px;
+        background: linear-gradient(180deg, rgba(0, 0, 0, 0.45), rgba(0, 0, 0, 0.85));
+        display: block;
+      }
+
+      .lore {
+        margin-top: 10px;
+        min-height: 62px;
+        color: rgba(255, 255, 255, 0.82);
+      }
+
+      .modal {
+        position: fixed;
+        inset: 0;
+        display: grid;
+        place-items: center;
+        background: rgba(0, 0, 0, 0.76);
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 400ms ease;
+        z-index: 10;
+      }
+
+      .modal.show {
+        opacity: 1;
+        pointer-events: auto;
+      }
+
+      .modal-card {
+        width: min(92vw, 520px);
+        padding: 22px;
+        border-radius: 18px;
+        background: linear-gradient(160deg, rgba(8, 8, 14, 0.95), rgba(18, 18, 28, 0.95));
+        border: 1px solid rgba(212, 175, 55, 0.4);
+        box-shadow: 0 0 40px rgba(212, 175, 55, 0.22);
+        text-align: center;
+      }
+
+      .modal-card h2 {
+        margin-top: 0;
+        color: var(--gold);
+        letter-spacing: 0.08em;
+      }
+
+      .cta {
+        display: inline-block;
+        margin-top: 12px;
+        padding: 11px 18px;
+        border-radius: 999px;
+        text-decoration: none;
+        color: #050508;
+        font-weight: 700;
+        background: linear-gradient(90deg, var(--gold), #f5d36b);
+      }
+
+      @media (max-width: 900px) {
+        .controls {
+          grid-template-columns: 1fr;
+        }
+
+        .scope-card canvas {
+          height: 280px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="app">
+      <header class="header glass">
+        <h1>Casa Creare</h1>
+        <p class="subtitle">A Celebration of Contemporary Philippine Arts &amp; Literature</p>
+        <p class="tagline">Beyond what you see, listen to what is felt.</p>
+      </header>
+
+      <section class="controls">
+        <aside class="dial-card glass">
+          <div class="dial-wrap">
+            <div class="dial" id="dial" aria-label="Frequency dial" tabindex="0">
+              <div class="needle" id="needle"></div>
+              <div class="dial-center"></div>
+            </div>
+            <input id="slider" type="range" min="88" max="108" step="0.1" value="98.1" aria-label="Frequency slider" />
+          </div>
+          <button id="audioToggle" class="audio-button">ENABLE AUDIO</button>
+        </aside>
+
+        <aside class="hud-card glass">
+          <div class="hud-grid">
+            <div class="metric">
+              <small>Current Frequency</small>
+              <strong id="freqValue">98.1 FM</strong>
+            </div>
+            <div class="metric">
+              <small>Signal Clarity</small>
+              <strong id="clarityValue">0%</strong>
+            </div>
+            <div class="metric">
+              <small>Unlocked</small>
+              <strong id="unlockValue">0 / 3</strong>
+            </div>
+          </div>
+          <div class="nodes" id="nodes"></div>
+          <div class="cards" id="cards"></div>
+        </aside>
+      </section>
+
+      <section class="scope-card glass">
+        <canvas id="scope" width="1040" height="420"></canvas>
+        <p class="lore" id="lore">Tune the dial to reveal hidden broadcasts from unseen worlds.</p>
+      </section>
+    </div>
+
+    <div class="modal" id="modal" aria-hidden="true">
+      <div class="modal-card">
+        <h2>ACCESS GRANTED</h2>
+        <p>All broadcast frequencies unlocked.</p>
+        <p><strong>Casa Creare Main Stage</strong><br />November 20–22, 2026</p>
+        <a class="cta" href="#" role="button">Reserve Seats</a>
+      </div>
+    </div>
+
+    <script>
+      const stations = [
+        {
+          id: 'hidlaw',
+          freq: 88.3,
+          title: '88.3 FM — HIDLAW',
+          color: '#D4AF37',
+          lore: 'Tungkung Langit and Alunsina fracture the cosmos; their eclipse threatens Laho, and love becomes a choice between reunion and protection.'
+        },
+        {
+          id: 'unseen',
+          freq: 94.7,
+          title: '94.7 FM — OPERATION: UNSEEN',
+          color: '#00F2FE',
+          lore: 'Carl, unseen at home, finds loyalty in three cockroaches—an unlikely bond that exposes neglect and the ache of being valued.'
+        },
+        {
+          id: 'waiting',
+          freq: 105.1,
+          title: "105.1 FM — WAITING: IT'LL NEVER BE THE CURE",
+          color: '#E63946',
+          lore: 'Isabel crosses oceans to save her son, Miguel, while distance heals the body but deepens the wound of years lost apart.'
+        }
+      ];
+
+      const minFreq = 88;
+      const maxFreq = 108;
+      const dial = document.getElementById('dial');
+      const needle = document.getElementById('needle');
+      const slider = document.getElementById('slider');
+      const freqValue = document.getElementById('freqValue');
+      const clarityValue = document.getElementById('clarityValue');
+      const unlockValue = document.getElementById('unlockValue');
+      const loreEl = document.getElementById('lore');
+      const nodesEl = document.getElementById('nodes');
+      const cardsEl = document.getElementById('cards');
+      const audioBtn = document.getElementById('audioToggle');
+      const modal = document.getElementById('modal');
+      const canvas = document.getElementById('scope');
+      const ctx = canvas.getContext('2d');
+
+      const unlocked = new Set();
+      const lockProgress = new Map(stations.map((s) => [s.id, 0]));
+      let targetFreq = Number(slider.value);
+      let displayFreq = targetFreq;
+      let activeStation = null;
+      let modalShown = false;
+      let draggingDial = false;
+      let lastTime = performance.now();
+
+      const bugParticles = Array.from({ length: 48 }, () => ({
+        x: Math.random() * canvas.width,
+        y: Math.random() * canvas.height,
+        vx: (Math.random() - 0.5) * 0.9,
+        vy: (Math.random() - 0.5) * 0.7,
+        size: Math.random() * 2 + 0.8
+      }));
+
+      class AudioEngine {
+        constructor() {
+          this.ctx = null;
+          this.master = null;
+          this.noiseGain = null;
+          this.stationGains = {};
+          this.enabled = false;
+          this.muted = false;
+          this.chimeTimer = null;
+          this.tickTimer = null;
+          this.heartTimer = null;
+        }
+
+        async init() {
+          if (this.ctx) return;
+          const AC = window.AudioContext || window.webkitAudioContext;
+          this.ctx = new AC();
+          this.master = this.ctx.createGain();
+          this.master.gain.value = 0.85;
+          this.master.connect(this.ctx.destination);
+
+          this.noiseGain = this.ctx.createGain();
+          this.noiseGain.gain.value = 0.18;
+          this.noiseGain.connect(this.master);
+          this.createNoise(this.noiseGain, false);
+
+          this.stationGains.hidlaw = this.ctx.createGain();
+          this.stationGains.unseen = this.ctx.createGain();
+          this.stationGains.waiting = this.ctx.createGain();
+          Object.values(this.stationGains).forEach((g) => {
+            g.gain.value = 0;
+            g.connect(this.master);
+          });
+
+          this.setupHidlaw();
+          this.setupUnseen();
+          this.setupWaiting();
+          this.enabled = true;
+        }
+
+        createNoise(destination, dark) {
+          const buffer = this.ctx.createBuffer(1, this.ctx.sampleRate * 2, this.ctx.sampleRate);
+          const data = buffer.getChannelData(0);
+          for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
+
+          const source = this.ctx.createBufferSource();
+          source.buffer = buffer;
+          source.loop = true;
+          const filter = this.ctx.createBiquadFilter();
+          filter.type = dark ? 'lowpass' : 'bandpass';
+          filter.frequency.value = dark ? 620 : 2500;
+          filter.Q.value = dark ? 0.5 : 0.35;
+
+          source.connect(filter);
+          filter.connect(destination);
+          source.start();
+        }
+
+        setupHidlaw() {
+          const g = this.stationGains.hidlaw;
+          const low = this.ctx.createOscillator();
+          const sub = this.ctx.createOscillator();
+          const mix = this.ctx.createGain();
+          const tone = this.ctx.createBiquadFilter();
+          tone.type = 'lowpass';
+          tone.frequency.value = 320;
+
+          low.type = 'triangle';
+          low.frequency.value = 42;
+          sub.type = 'sine';
+          sub.frequency.value = 64;
+
+          mix.gain.value = 0.45;
+          low.connect(mix);
+          sub.connect(mix);
+          mix.connect(tone);
+          tone.connect(g);
+          low.start();
+          sub.start();
+
+          this.chimeTimer = setInterval(() => {
+            if (g.gain.value < 0.15) return;
+            const t = this.ctx.currentTime;
+            const o = this.ctx.createOscillator();
+            const og = this.ctx.createGain();
+            o.type = 'sine';
+            o.frequency.setValueAtTime(310, t);
+            o.frequency.exponentialRampToValueAtTime(92, t + 1.1);
+            og.gain.setValueAtTime(0.0001, t);
+            og.gain.exponentialRampToValueAtTime(0.32, t + 0.03);
+            og.gain.exponentialRampToValueAtTime(0.0001, t + 1.2);
+            o.connect(og);
+            og.connect(g);
+            o.start(t);
+            o.stop(t + 1.25);
+          }, 3200);
+        }
+
+        setupUnseen() {
+          const g = this.stationGains.unseen;
+          this.createNoise(g, false);
+
+          this.tickTimer = setInterval(() => {
+            if (g.gain.value < 0.12) return;
+            const t = this.ctx.currentTime;
+            const o = this.ctx.createOscillator();
+            const og = this.ctx.createGain();
+            o.type = 'square';
+            o.frequency.value = 1100 + Math.random() * 180;
+            og.gain.setValueAtTime(0.0001, t);
+            og.gain.exponentialRampToValueAtTime(0.22, t + 0.004);
+            og.gain.exponentialRampToValueAtTime(0.0001, t + 0.085);
+            o.connect(og);
+            og.connect(g);
+            o.start(t);
+            o.stop(t + 0.09);
+          }, 680);
+        }
+
+        setupWaiting() {
+          const g = this.stationGains.waiting;
+          this.createNoise(g, true);
+
+          this.heartTimer = setInterval(() => {
+            if (g.gain.value < 0.12) return;
+            this.playHeartThump(g, this.ctx.currentTime);
+          }, 1200);
+        }
+
+        playHeartThump(destination, t0) {
+          [0, 0.22].forEach((shift, idx) => {
+            const t = t0 + shift;
+            const o = this.ctx.createOscillator();
+            const og = this.ctx.createGain();
+            o.type = 'sine';
+            o.frequency.setValueAtTime(idx ? 62 : 55, t);
+            o.frequency.exponentialRampToValueAtTime(36, t + 0.14);
+            og.gain.setValueAtTime(0.0001, t);
+            og.gain.exponentialRampToValueAtTime(0.34, t + 0.01);
+            og.gain.exponentialRampToValueAtTime(0.0001, t + 0.2);
+            o.connect(og);
+            og.connect(destination);
+            o.start(t);
+            o.stop(t + 0.25);
+          });
+        }
+
+        playUnlockChime() {
+          if (!this.ctx) return;
+          const t = this.ctx.currentTime;
+          [0, 0.18, 0.42].forEach((step, i) => {
+            const o = this.ctx.createOscillator();
+            const g = this.ctx.createGain();
+            const freq = [392, 523, 784][i];
+            o.type = 'sine';
+            o.frequency.value = freq;
+            g.gain.setValueAtTime(0.0001, t + step);
+            g.gain.exponentialRampToValueAtTime(0.28, t + step + 0.03);
+            g.gain.exponentialRampToValueAtTime(0.0001, t + step + 0.8);
+            o.connect(g);
+            g.connect(this.master);
+            o.start(t + step);
+            o.stop(t + step + 0.85);
+          });
+        }
+
+        async toggle() {
+          if (!this.ctx) await this.init();
+          if (this.ctx.state === 'suspended') await this.ctx.resume();
+          this.muted = !this.muted;
+          this.master.gain.setTargetAtTime(this.muted ? 0 : 0.85, this.ctx.currentTime, 0.06);
+          return !this.muted;
+        }
+
+        update(map, maxClarity) {
+          if (!this.enabled || !this.ctx) return;
+          const t = this.ctx.currentTime;
+          this.noiseGain.gain.setTargetAtTime(0.22 * (1 - maxClarity) + 0.01, t, 0.05);
+          this.stationGains.hidlaw.gain.setTargetAtTime((map.hidlaw || 0) * 0.46, t, 0.09);
+          this.stationGains.unseen.gain.setTargetAtTime((map.unseen || 0) * 0.32, t, 0.09);
+          this.stationGains.waiting.gain.setTargetAtTime((map.waiting || 0) * 0.45, t, 0.09);
+        }
+      }
+
+      const audio = new AudioEngine();
+
+      function lerp(a, b, t) {
+        return a + (b - a) * t;
+      }
+
+      function clamp(v, lo, hi) {
+        return Math.min(hi, Math.max(lo, v));
+      }
+
+      function stationClarity(freq, stationFreq) {
+        const d = Math.abs(freq - stationFreq);
+        const normalized = clamp(1 - d / 1.1, 0, 1);
+        return normalized * normalized;
+      }
+
+      function freqToAngle(freq) {
+        const ratio = (freq - minFreq) / (maxFreq - minFreq);
+        return -140 + ratio * 280;
+      }
+
+      function updateDialUI() {
+        const angle = freqToAngle(displayFreq);
+        needle.style.transform = `rotate(${angle}deg)`;
+        slider.value = targetFreq.toFixed(1);
+      }
+
+      function updateFromDialPointer(clientX, clientY) {
+        const rect = dial.getBoundingClientRect();
+        const cx = rect.left + rect.width / 2;
+        const cy = rect.top + rect.height / 2;
+        const rad = Math.atan2(clientY - cy, clientX - cx);
+        let deg = (rad * 180) / Math.PI + 90;
+        deg = ((deg + 540) % 360) - 180;
+        const clamped = clamp(deg, -140, 140);
+        const ratio = (clamped + 140) / 280;
+        targetFreq = clamp(minFreq + ratio * (maxFreq - minFreq), minFreq, maxFreq);
+      }
+
+      function renderCards() {
+        cardsEl.innerHTML = stations
+          .map(
+            (s) => `<div class="card ${unlocked.has(s.id) ? '' : 'locked'}">
+              <strong>${s.title}</strong><br />${unlocked.has(s.id) ? s.lore : 'Signal not decoded'}
+            </div>`
+          )
+          .join('');
+      }
+
+      function renderNodes() {
+        nodesEl.innerHTML = stations
+          .map((s) => `<div class="node ${unlocked.has(s.id) ? 'active' : ''}" aria-label="${s.id} node"></div>`)
+          .join('');
+      }
+
+      function drawScope(time, activeId, clarity) {
+        const w = canvas.width;
+        const h = canvas.height;
+
+        ctx.fillStyle = 'rgba(4, 4, 10, 0.23)';
+        ctx.fillRect(0, 0, w, h);
+
+        ctx.save();
+        if (activeId === 'hidlaw') {
+          const glow = ctx.createRadialGradient(w * 0.5, h * 0.48, 12, w * 0.5, h * 0.48, 170);
+          glow.addColorStop(0, 'rgba(212,175,55,0.35)');
+          glow.addColorStop(0.45, 'rgba(134,89,11,0.22)');
+          glow.addColorStop(1, 'rgba(0,0,0,0)');
+          ctx.fillStyle = glow;
+          ctx.fillRect(0, 0, w, h);
+        } else if (activeId === 'waiting') {
+          const glow = ctx.createLinearGradient(0, 0, 0, h);
+          glow.addColorStop(0, 'rgba(230,57,70,0.08)');
+          glow.addColorStop(1, 'rgba(0,0,0,0.2)');
+          ctx.fillStyle = glow;
+          ctx.fillRect(0, 0, w, h);
+        }
+
+        ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+        ctx.lineWidth = 1;
+        for (let y = 20; y < h; y += 40) {
+          ctx.beginPath();
+          ctx.moveTo(0, y);
+          ctx.lineTo(w, y);
+          ctx.stroke();
+        }
+
+        ctx.beginPath();
+        const baseY = h / 2;
+        for (let x = 0; x <= w; x += 4) {
+          const p = x / w;
+          let y = baseY;
+          if (activeId === 'hidlaw') {
+            y += Math.sin(p * 22 + time * 0.0022) * (24 + clarity * 22);
+            y += Math.sin(p * 6 - time * 0.0012) * 14;
+            ctx.strokeStyle = 'rgba(212,175,55,0.95)';
+          } else if (activeId === 'unseen') {
+            y += Math.sin(p * 95 + time * 0.011) * (7 + clarity * 26);
+            y += (Math.random() - 0.5) * 16 * (0.3 + clarity);
+            ctx.strokeStyle = 'rgba(0,242,254,0.93)';
+          } else if (activeId === 'waiting') {
+            const cycle = ((p * 8 + (time * 0.00095) % 1) % 1);
+            if (cycle < 0.08) y -= Math.sin((cycle / 0.08) * Math.PI) * 12;
+            else if (cycle < 0.12) y += (cycle - 0.08) * 900;
+            else if (cycle < 0.17) y -= (cycle - 0.12) * 1400;
+            else if (cycle < 0.22) y += (cycle - 0.17) * 500;
+            y += Math.sin(p * 14 + time * 0.003) * 3;
+            ctx.strokeStyle = 'rgba(230,57,70,0.98)';
+          } else {
+            y += Math.sin(p * 58 + time * 0.01) * 10;
+            y += (Math.random() - 0.5) * 34;
+            ctx.strokeStyle = 'rgba(160,190,210,0.55)';
+          }
+
+          if (x === 0) ctx.moveTo(x, y);
+          else ctx.lineTo(x, y);
+        }
+        ctx.lineWidth = 2.2;
+        ctx.shadowBlur = activeId ? 14 : 4;
+        ctx.shadowColor = ctx.strokeStyle;
+        ctx.stroke();
+
+        if (activeId === 'unseen') {
+          ctx.fillStyle = 'rgba(10,10,10,0.65)';
+          bugParticles.forEach((b) => {
+            b.x += b.vx * (1 + clarity * 2);
+            b.y += b.vy * (1 + clarity);
+            if (b.x < -8) b.x = w + 8;
+            if (b.x > w + 8) b.x = -8;
+            if (b.y < 0) b.y = h;
+            if (b.y > h) b.y = 0;
+            ctx.beginPath();
+            ctx.ellipse(b.x, b.y, b.size * 1.6, b.size, Math.sin(time * 0.01 + b.x), 0, Math.PI * 2);
+            ctx.fill();
+          });
+        }
+        ctx.restore();
+      }
+
+      function animate(now) {
+        const dt = Math.min(64, now - lastTime);
+        lastTime = now;
+        displayFreq = lerp(displayFreq, targetFreq, 0.09);
+
+        const clarities = Object.fromEntries(stations.map((s) => [s.id, stationClarity(displayFreq, s.freq)]));
+        let best = null;
+        stations.forEach((s) => {
+          if (!best || clarities[s.id] > best.clarity) best = { id: s.id, clarity: clarities[s.id], station: s };
+        });
+
+        activeStation = best.clarity > 0.2 ? best.station : null;
+        const clarityPercent = Math.round(best.clarity * 100);
+
+        stations.forEach((s) => {
+          const lock = best.station.id === s.id && best.clarity >= 0.9;
+          const next = clamp(lockProgress.get(s.id) + (lock ? dt : -dt * 0.8), 0, 850);
+          lockProgress.set(s.id, next);
+          if (next >= 850) unlocked.add(s.id);
+        });
+
+        if (unlocked.size === 3 && !modalShown) {
+          modalShown = true;
+          modal.classList.add('show');
+          modal.setAttribute('aria-hidden', 'false');
+          audio.playUnlockChime();
+        }
+
+        if (activeStation) {
+          loreEl.textContent = activeStation.lore;
+          document.documentElement.style.setProperty('--accent', activeStation.color + 'e8');
+        } else {
+          loreEl.textContent = 'Tune the dial to reveal hidden broadcasts from unseen worlds.';
+          document.documentElement.style.setProperty('--accent', 'rgba(212, 175, 55, 0.9)');
+        }
+
+        freqValue.textContent = `${displayFreq.toFixed(1)} FM`;
+        clarityValue.textContent = `${clarityPercent}%`;
+        unlockValue.textContent = `${unlocked.size} / 3`;
+
+        updateDialUI();
+        renderNodes();
+        renderCards();
+        drawScope(now, activeStation?.id, best.clarity);
+
+        if (audio.enabled) audio.update(clarities, best.clarity);
+        requestAnimationFrame(animate);
+      }
+
+      slider.addEventListener('input', (e) => {
+        targetFreq = Number(e.target.value);
+      });
+
+      dial.addEventListener('pointerdown', (e) => {
+        draggingDial = true;
+        dial.setPointerCapture(e.pointerId);
+        updateFromDialPointer(e.clientX, e.clientY);
+      });
+
+      dial.addEventListener('pointermove', (e) => {
+        if (!draggingDial) return;
+        updateFromDialPointer(e.clientX, e.clientY);
+      });
+
+      dial.addEventListener('pointerup', () => {
+        draggingDial = false;
+      });
+
+      dial.addEventListener('wheel', (e) => {
+        e.preventDefault();
+        targetFreq = clamp(targetFreq - e.deltaY * 0.004, minFreq, maxFreq);
+      });
+
+      window.addEventListener('keydown', (e) => {
+        if (e.key === 'ArrowLeft' || e.key === 'ArrowDown') targetFreq = clamp(targetFreq - (e.shiftKey ? 0.5 : 0.1), minFreq, maxFreq);
+        if (e.key === 'ArrowRight' || e.key === 'ArrowUp') targetFreq = clamp(targetFreq + (e.shiftKey ? 0.5 : 0.1), minFreq, maxFreq);
+      });
+
+      audioBtn.addEventListener('click', async () => {
+        const unmuted = await audio.toggle();
+        audioBtn.textContent = unmuted ? 'MUTE AUDIO' : 'ENABLE AUDIO';
+      });
+
+      modal.addEventListener('click', (e) => {
+        if (e.target === modal) modal.classList.remove('show');
+      });
+
+      renderNodes();
+      renderCards();
+      updateDialUI();
+      requestAnimationFrame(animate);
+    </script>
+  </body>
+</html>
